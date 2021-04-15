@@ -1,3 +1,3 @@
-# IBI5031---Aprendizagem-de-M-quina-para-Bioinform-tica-1S-2021-
+# IBI5031-Machine-Learning-apply-to-Bioinformatics
 
 * Repositório da Disciplina de Aprendizagem de Maquina para Bioinformática
