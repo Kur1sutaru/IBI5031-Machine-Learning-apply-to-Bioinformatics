@@ -31,8 +31,13 @@ data <- GDCprepare(query, directory = "D:/TCGA-BRCA")
 rowRanges(data)
 #To create the data matrix with the raw counts
 dataMatrix <- assay(data,"raw_count")
+
+# to save the raw data
+write.csv(dataMatrix, "raw-counts-brca.csv")
 # remove outliers to improve the analysis
 data_CorOutliers <- TCGAanalyze_Preprocessing(data)
+# to save the raw data without the outliers
+write.csv(data_CorOutliers, "no-outliers-raw-counts-brca.csv")
 
 
 # Downstream analysis using gene expression data  
@@ -41,6 +46,7 @@ save(data, geneInfo , file = "dataGeneExpression.rda")
 
 # normalization of genes using dataMatrix
 dataNorm <- TCGAanalyze_Normalization(tabDF = dataMatrix, geneInfo =  geneInfo)
+# To save the normalized data
 
 # I Need about  302 seconds for this Complete Normalization Upper Quantile 
 ## [Processing 80k elements /s]  
@@ -48,6 +54,8 @@ dataNorm <- TCGAanalyze_Normalization(tabDF = dataMatrix, geneInfo =  geneInfo)
 ## Step 2 of 4: withinLaneNormalization ...
 ## Step 3 of 4: betweenLaneNormalization ...
 ## Step 4 of 4: exprs ...
+
+write.csv(dataNorm, "brca-normalized.csv")
 
 # quantile filter of genes using normalized data
 # general expression: differential and non differential expressed
@@ -66,10 +74,13 @@ samplesTP <- TCGAquery_SampleTypes(barcode = colnames(dataFilt),
 samplesTM <- TCGAquery_SampleTypes(barcode = colnames(dataFilt),
                                    typesample = c("TM"))
 
+### save the results before degs analysis
+
+
 # Diff.expr.analysis (DEA)
 # matN: filtering by samples  NT and  TP
 # fdr: 0.01 - false discovery rate
-# FC: 0 = sem diferenças 1 = upregulated -1 = downregulated
+# FC: 0 = without difference 1 = upregulated -1 = downregulated
 
 
 # To use in the volcano plot
@@ -136,6 +147,8 @@ write.table(dataDEGs_001, 'dataDEGs_001_fc_1.txt', sep='\t')
 write.table(dataDEGs_005, 'dataDEGs_005fc_2.txt', sep='\t')
 write.table(dataDEGs_all_genes, 'dataDEGs_all_genes.txt', sep='\t')
 
+write.csv(dataDEGs_005, 'dataDEGs_005fc_2.csv')
+
 ############################################
 #       ENRICHMENT ANALYSIS                #
 ############################################
@@ -192,6 +205,7 @@ dev.off()
 #Save the results - again and again...
 write.table(dataFilt2,"samplesNT_TP.txt", sep="\t")
 write.table(dataDEGs_001_allgenes,"difexp_allgenes.txt", sep="\t")
+write.csv(dataDEGs_005, "brca-results.csv")
 
 # DEGs table with expression values in normal and tumor samples
 dataDEGsFiltLevel <- TCGAanalyze_LevelTab(dataDEGs_001_allgenes,"Tumor","Normal",
@@ -238,4 +252,50 @@ TCGAVisualize_volcano(x = dataDEGs_005$logFC,
                       width = 10)
 
 ### BRCA subtype information from: doi.org/10.1016/j.ccell.2018.03.014
+library(autoGO)
+library(org.Hs.eg.db)
+library(clusterProfiler)
+library(KEGGprofile)
+library(ggplot2)
+listspecies()
+automatic_GO_enrich(
+  x = dir("D:/TCGA-BRCA/enrichment"),
+  spcode = 'hsa',
+  keytype = "SYMBOL",
+  orderby = "",
+  dotplotgenes = 30,
+  fontSize = 8,
+  genekeyPos = 1,
+  maxnumberofgenes = 5000,
+  GO_pvalue = 0.05,
+  KEGG = TRUE,
+  GOALL = TRUE,
+  GOBP = TRUE,
+  GOMF = TRUE,
+  GOCC = TRUE,
+  writeTable = TRUE,
+  writeplot = TRUE
+)
 
+library(org.Hs.eg.db)
+# Erro: package or namespace load failed for 'org.Hs.eg.db':
+#  .onLoad falhou em loadNamespace() para 'org.Hs.eg.db', detalhes:
+#  chamada: l$contains
+# erro: $ operator is invalid for atomic vectors
+
+# dizem as más línguas - ou as boas que isso pode solucionar o problema
+options(connectionObserver = NULL)
+
+# ITS WORK NOW YAYY
+# Change the working directory to autoGO run
+
+# Check molecular subtypes of BRCA data
+subtypes <- PanCancerAtlas_subtypes()
+DT::datatable(subtypes,
+              filter = 'top',
+              options = list(scrollX = TRUE, keys = TRUE, pageLength = 5),
+              rownames = FALSE)
+brcasubtype<-TCGAquery_subtype(tumor = "brca")
+
+# To save the results in a table
+write.csv(brcasubtype, "brca-clinical-subtype.csv")
